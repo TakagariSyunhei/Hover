@@ -1,9 +1,21 @@
+#-*-coding:utf-8-*-
+"""
+建築用ホバリングスクリプト
+
+コマンド：
+	/hover
+		ホバリングモードのON/OFF切り替え
+		ホバリングモードONの時にジャンプしたら、自動的にホバリング開始
+"""
 from twisted.internet import reactor
 from pyspades.constants import *
 from pyspades.common import Vertex3
 from commands import add, admin
 
 import math
+
+HOVER_SPEED = 0.2
+HIGHER_SPEED = 0.6
 
 @admin
 def hover(connection):
@@ -17,7 +29,6 @@ def hover(connection):
 add(hover)
 
 
-
 def apply_script(protocol, connection, config):
 	class HoverProtocol(protocol):
 		def on_map_change(self, map):
@@ -26,14 +37,22 @@ def apply_script(protocol, connection, config):
 				player.hover = False
 	
 	class HoverConnection(connection):
+		#飛行中判定
 		hover = False
+		
+		#ホバリングモード
 		hover_right = False
+		
+		#入力された移動方向
 		fw = False
 		bw = False
 		le = False
 		ri = False
 		up = False
 		dw = False
+		
+		#移動スピード
+		speed = HOVER_SPEED
 		
 		def hovering(self, x, y, z):
 			if isinstance(self.world_object, type(None)):
@@ -44,13 +63,13 @@ def apply_script(protocol, connection, config):
 					n = math.pow(oz, 2)
 					m = 1 - n
 					
-					x2 = ox / 5
-					y2 = oy / 5
-					z2 = oz / 5
+					x2 = ox * self.speed
+					y2 = oy * self.speed
+					z2 = oz * self.speed
 					
-					x3 = ox * oz / math.sqrt(m) / 5
-					y3 = oy * oz / math.sqrt(m) / 5
-					z3 = math.sqrt(m) / 5
+					x3 = ox * oz / math.sqrt(m) * self.speed
+					y3 = oy * oz / math.sqrt(m) * self.speed
+					z3 = math.sqrt(m) * self.speed
 					
 					dx = x
 					dy = y
@@ -102,6 +121,9 @@ def apply_script(protocol, connection, config):
 				self.set_location((dx, dy, dz))
 				reactor.callLater(0.01, self.hovering, dx, dy, dz)
 		
+		"""
+		shiftキー（上昇）、ctrlキー（下降）の入力を受け取ってホバリング用の情報に変換
+		"""
 		def on_animation_update(self,jump,crouch,sneak,sprint):
 			if not self.hover and self.hover_right and jump:
 				self.hover = True
@@ -118,6 +140,9 @@ def apply_script(protocol, connection, config):
 					self.dw = False
 			return connection.on_animation_update(self,jump,crouch,sneak,sprint)
 		
+		"""
+		WASDによる移動を受け取ってホバリング用の情報に変換
+		"""
 		def on_walk_update(self, fw, bw, le, ri):
 			if fw:
 				self.fw = True
@@ -137,6 +162,22 @@ def apply_script(protocol, connection, config):
 				self.ri = False
 			return connection.on_walk_update(self, fw, bw, le, ri)
 		
+		"""
+		移動速度の変更
+		"""
+		def on_secondary_fire_set(self, secondary):
+			if secondary:
+				self.speed = HIGHER_SPEED
+				self.send_chat("SPEED UP")
+			else:
+				self.speed = HOVER_SPEED
+				self.send_chat("SPEED DOWN")
+			return connection.on_secondary_fire_set(self, secondary)
+		
+		
+		"""
+		この下はホバリングモードを強制解除する条件を設定
+		"""
 		def on_team_leave(self):
 			self.hover = False
 			self.hover_right = False
