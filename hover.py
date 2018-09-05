@@ -167,12 +167,13 @@ def apply_script(protocol, connection, config):
 		移動速度の変更
 		"""
 		def on_secondary_fire_set(self, secondary):
-			if secondary:
-				self.speed = HIGHER_SPEED
-				self.send_chat("SPEED UP")
-			else:
-				self.speed = HOVER_SPEED
-				self.send_chat("SPEED DOWN")
+			if self.hover:
+				if secondary:
+					self.speed = HIGHER_SPEED
+					self.send_chat("SPEED UP")
+				else:
+					self.speed = HOVER_SPEED
+					self.send_chat("SPEED DOWN")
 			return connection.on_secondary_fire_set(self, secondary)
 		
 		
