@@ -35,6 +35,7 @@ def apply_script(protocol, connection, config):
 			for player in self.players.values():
 				player.hover_right = False
 				player.hover = False
+			protocol.on_map_change(self, map)
 	
 	class HoverConnection(connection):
 		#飛行中判定
