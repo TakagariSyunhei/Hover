@@ -55,11 +55,23 @@ def apply_script(protocol, connection, config):
 		#移動スピード
 		speed = HOVER_SPEED
 		
+		"""
+		ホバリング関数
+		着陸やログアウトによって中断されるまでcallLaterでループ処理する
+		"""
 		def hovering(self, x, y, z):
+		
+			#ログアウト後にループ処理が残らないよう、存在の確認
 			if isinstance(self.world_object, type(None)):
 				return
+			
+			#ホバー中か確認して、座標を計算
 			if self.hover:
+				
+				#移動方向の入力を取得
 				if  self.fw or self.bw or self.le or self.ri or self.up or self.dw:
+					
+					#プレイヤーの顔の向きを取得
 					ox, oy, oz = self.world_object.orientation.get()
 					n = math.pow(oz, 2)
 					m = 1 - n
@@ -101,17 +113,24 @@ def apply_script(protocol, connection, config):
 					dx = (dx + 511) % 511
 					dy = (dy + 511) % 511
 					
+					#座標を四捨五入する丸め処理
 					ddx = math.floor(dx + 0.5)
 					ddy = math.floor(dy + 0.5)
 					ddz = math.floor(dz + 0.5)
-					if self.protocol.map.get_solid(ddx, ddy, ddz):
-						dx = x
-						dy = y
+					
+					#移動先の頭の高さにブロックがあれば、それ以上上昇しない
+					if self.protocol.map.get_solid(ddx, ddy, dz):
 						dz = z
+						if self.protocol.map.get_solid(ddx, ddy, ddz+1):
+							dx = x
+							dy = y
+					
+					#移動先の胴～足の高さにブロックがあれば、着陸する
 					elif self.protocol.map.get_solid(ddx, ddy, ddz+1):
 						dz -= 1
 						self.hover = False
-						
+					
+					#高く飛びすぎてクライアントが異常終了しないよう設定
 					if dz < -90:
 						dz = z
 				
@@ -123,13 +142,16 @@ def apply_script(protocol, connection, config):
 				reactor.callLater(0.01, self.hovering, dx, dy, dz)
 		
 		"""
+		ジャンプした際に権限を確認してホバー開始
 		shiftキー（上昇）、ctrlキー（下降）の入力を受け取ってホバリング用の情報に変換
 		"""
 		def on_animation_update(self,jump,crouch,sneak,sprint):
 			if not self.hover and self.hover_right and jump:
-				self.hover = True
 				x, y, z = self.world_object.position.get()
-				self.hovering(x, y, z)
+				#地上でのみホバーを開始する
+				if z < 61:
+					self.hover = True
+					self.hovering(x, y, z)
 			if self.hover:
 				if sprint:
 					self.up = True
